@@ -2,8 +2,11 @@
 # Script for Natural disasters paper
 ####################################################################################
 # !diagnostics off
+
+##### 
 # Clean working space, packages and functions
 ##### 
+
 rm(list=ls(all=TRUE))
 library(Rsolnp)
 library(magrittr)
@@ -12,16 +15,21 @@ library(ggplot2)
 library(gridExtra)
 library(latex2exp)
 library(ggrepel)
+
 ##### 
 # Load required functions to perform the analysis
 ##### 
+
 source('corefx.R')
+
 #####
 # Specify the parameters of the model
 #####
-# Biology parameters
+
+# Biological parameters
 r <- .3 # Growth rate
 cc <- 100 # Carrying capacity
+
 # Economic parameters (TT,x0,p,w,q,c,r,cc,delta,beta,i_a,i_b)
 p <- 5 # Price
 w <- 1 # Cost
@@ -29,33 +37,37 @@ q <- .005 # Catchability coefficient
 c <- 10 # Cost of capital 
 delta <- 0.1 # Depreciation
 beta <- 0.95 # Discount factor
+
 ##### 
 # Simulations
 ##### 
-# Starting parameters
+
+# Initial conditions
 TT <- 80
 k0 <- 0
 nk0 <- 0
 X0 <- 100
-d <- 0 # No  subsidies
+d <- 0 # No subsidies
 
-# Firm scenarios 
+# Number of firms to evaluate the model 
 NN = c(seq(1,50,1))
+
+# Maximum number of iterations to calculate the closed loop
 maxit = 100
 
-# Calculate steady state
-
+# Empty data frames to store steady state conditions
 A <- data.frame(N = NN, SR = NN) 
 C <- data.frame(N = NN, SR = NN) 
 
+# Run simulations for different number of firms 
 for(mm in 1:length(NN)){
   N = NN[mm]
   
   i <- matrix(0,nrow=TT,ncol=N)
   
   print(c("Currently evaluating equilibrium for ",N,"firms"))
-  for (nn in 1:maxit){ # Max iterations for equilibrium=
-    for(jj in 1:ncol(i)){ # Idex over firm jj
+  for (nn in 1:maxit){ # Max number of iterations for equilibrium
+    for(jj in 1:ncol(i)){ # Index over firm jj
       # Initiate calculations, assume other players have zero investment 
       if(N==1){
         ni <- rep(0,TT) # Sole owner has no competiion
@@ -85,21 +97,21 @@ for(mm in 1:length(NN)){
     }
     if(nn==maxit){print("EQUILIIBRUM CONDITIONS ARE NOT SATISFIED!")} 
   }
-  
+  # Store results
   A$SR[mm] <- list(fishery.simulation.nash(TT,N,X0,k0,nk0,p,w,q,c,r,cc,delta,beta,rowSums(cbind(i[,-1],rep(0,TT))),i[,1],d))
   
   # Cooperative counterfactual
-  
   OR <- solnp(rep(0.1/N,TT), # Starting values
               fun = coop.handle, # Function to minimize
               LB = rep(0,TT), # Lower bound for decision variables
               UB = rep(1e3,TT), # Upper bound for decision variables
               control = list(trace = 0)) # Omit output
   i <- OR$par
+  # Store results
   C$SR[mm] <- list(fishery.simulation.coop(TT,N,X0,k0,p,w,q,c,r,cc,delta,beta,i))
 }
 
-# Store results as data frame
+# Store full set of competitive results as data frame
 A <- A %>% rowwise() %>% 
   mutate(N.X = SR$Total.stock[TT/2],
          N.i = SR$Investment[TT/2],
@@ -111,6 +123,7 @@ A <- A %>% rowwise() %>%
          N.NPV = SR$NPV)
 A$SR <- NULL
 
+# Store full set of cooperative results as data frame
 C <- C %>% rowwise() %>% 
   mutate(C.X = SR$Total.stock[TT/2],
          C.i = SR$Investment[TT/2],
@@ -122,24 +135,29 @@ C <- C %>% rowwise() %>%
          C.NPV = SR$NPV)
 C$SR <- NULL
 
+# Create table with results
 R <- merge(A,C,by='N')
 
+# Calculate path back to steady state after a natural disaster destroys 90% of the capital stock
 
-# Calculate path nack to steady state after a natural disaster destroys 90% of the capital stock
+di <- .9 # Percentage of capital destroyed
+
+# Empty data frames to store results
 AD <- data.frame(N = NN, SR = NN) 
 CD <- data.frame(N = NN, SR = NN) 
 
+# Evaluate recovery path for each N scenario
 for(mm in 1:length(NN)){
   N = NN[mm]
-  k0 <- R$N.k[mm] * .1
+  k0 <- R$N.k[mm] * di # Initial capital is reduced 
   nk0 <- k0 * (N-1)
   X0 <- R$N.X[mm]
   
   i <- matrix(0,nrow=TT,ncol=N)
   
   print(c("Currently evaluating equilibrium for ",N,"firms"))
-  for (nn in 1:maxit){ # Max iterations for equilibrium=
-    for(jj in 1:ncol(i)){ # Idex over firm jj
+  for (nn in 1:maxit){ # Max number of iteration iterations for equilibrium
+    for(jj in 1:ncol(i)){ # Index over firm jj
       # Initiate calculations, assume other players have zero investment 
       if(N==1){
         ni <- rep(0,TT) # Sole owner has no competiion
@@ -170,6 +188,7 @@ for(mm in 1:length(NN)){
     if(nn==maxit){print("EQUILIIBRUM CONDITIONS ARE NOT SATISFIED!")} 
   }
   
+  # Store results
   AD$SR[mm] <- list(fishery.simulation.nash(TT,N,X0,k0,nk0,p,w,q,c,r,cc,delta,beta,rowSums(cbind(i[,-1],rep(0,TT))),i[,1],d))
   
   # Cooperative counterfactual
@@ -188,7 +207,7 @@ for(mm in 1:length(NN)){
   CD$SR[mm] <- list(fishery.simulation.coop(TT,N,X0,k0,p,w,q,c,r,cc,delta,beta,i))
 }
 
-# Store results as data frame
+# Store competitive results as data frame
 AD <- AD %>% rowwise() %>% 
   mutate(N.X = SR$Total.stock[TT/2],
          N.i = SR$Investment[TT/2],
@@ -199,7 +218,7 @@ AD <- AD %>% rowwise() %>%
          N.TPI = N*N.Pi,
          N.NPV = SR$NPV)
 
-
+# Store cooperative results as data frame
 CD <- CD %>% rowwise() %>% 
   mutate(C.X = SR$Total.stock[TT/2],
          C.i = SR$Investment[TT/2],
@@ -215,9 +234,12 @@ RD <- merge(AD,CD,by='N')
 AD$SR <- NULL
 CD$SR <- NULL
 
+# Create table for comparison
 RR <- merge(AD,CD,by='N')
 
-# Generate plots
+##### 
+# Plot simulation results
+##### 
 
 # Grab steady state values
 ND <- data.frame(time = rep((1:(TT*2)), times = length(NN)),

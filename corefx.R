@@ -2,15 +2,13 @@
 # Functions for the numerical simulations of capital investment
 #######################################################################################
 
-# General functions
-#####
 # Stock growth
 stock.growth<-function(x,r,cc){
   g=r*x*(1-x/cc)+x
   g
 }
 
-# Profit function
+# Profits
 profit.function<-function(y,i,x,p,w,q,c,N){
   Pi = (p-w/(q*x))*y - c/2*(i)^2
   Pi
@@ -69,6 +67,7 @@ fishery.simulation.nash <- function(TT,N,X0,k0,nk0,p,w,q,c,r,cc,delta,beta,ni,i,
   
   NPV = sum(DPi) # Net present value for the firm
   
+  # Store results
   list(Total.stock = x, Harvest = y, Total.harvest  = Y, Investment = i, Total.investment = I,
        Capital = k, Total.capital = K, Profits = Pi, NPV = NPV
   )
@@ -123,6 +122,7 @@ fishery.simulation.coop <- function(TT,N,X0,k0,p,w,q,c,r,cc,delta,beta,i){
   
   NPV = sum(DPi) # Net present value for the FISHERY
   
+  # Store results
   list(Total.stock = x, Harvest = y, Total.harvest  = Y, Investment = i, Total.investment = I,
        Capital = k, Total.capital = K, Profits = Pi, NPV = NPV
   )
